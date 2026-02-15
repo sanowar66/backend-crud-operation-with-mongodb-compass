@@ -5,14 +5,18 @@ const { findById } = require('../../models/User')
 
 //create a task
 router.post('/', async(req, res) => {
-        const taskObj = {
-            title: req.body.title,
-            desc: req.body.desc,
-            status: req.body.status
+        try {
+            const taskObj = {
+                title: req.body.title,
+                desc: req.body.desc,
+                status: req.body.status
+            }
+            const task = new Task(taskObj)
+            await task.save()
+            res.status(201).json(task)
+        } catch {
+            res.status(500).json({ message: "Something went wrong." })
         }
-        const task = new Task(taskObj)
-        await task.save()
-        res.status(201).json(task)
     })
     //get all task
 router.get('/', async(req, res) => {
