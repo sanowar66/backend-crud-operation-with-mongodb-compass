@@ -4,10 +4,12 @@ const connectDB = require("./config/db");
 const app = express();
 connectDB()
 const userRoute = require('./routes/api/users')
+const taskRoute = require('./routes/api/tasks')
     //request of content type of body
 const bodyParser = require('body-parser')
 app.use(bodyParser.json())
 app.use('/api/users', userRoute)
+app.use('/api/tasks', taskRoute)
     //define a simple route
 app.get('/', (req, res) => {
         res.json({ message: ' Finally Welcome to my application.' })
