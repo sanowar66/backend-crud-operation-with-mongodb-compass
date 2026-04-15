@@ -23,54 +23,11 @@ router.post('/login', async(req, res) => {
         try {
             const { type, email, password, refreshToken } = req.body
             if (type == 'email') {
-                const user = await User.findOne({ email: email })
-                if (!user) {
-                    res.status(401).json({
-                        message: "User not found "
-                    })
-                } else {
-                    const isValidPassword = await bcrypt.compare(password, user.password)
-                    if (!isValidPassword) {
-                        res.status(401).json({ message: "Password is incorrect" })
-                    } else {
-                        const accessToken = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-                        const refreshToken = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "30d" });
-                        const userObj = user.toJSON()
-                        userObj['accessToken'] = accessToken
-                        userObj['refreshToken'] = refreshToken
-                        res.status(200).json(userObj)
-                    }
-                }
+                await emailValidationtoLogin(email, res, password);
             } else {
-
-                if (!refreshToken) {
-                    res.status(401).json({
-                        message: "User not found "
-                    })
-                } else {
-                    jwt.verify(refreshToken, process.env.JWT_SECRET, async(err, payload) => {
-                        if (err) {
-                            res.status(401).json({ message: "could not find the refresh token" })
-                            return
-                        } else {
-                            const id = payload.id
-                            const user = await User.findById(id);
-                            if (!user) {
-                                res.status(401).json({ message: "Unauthorized" })
-                            } else {
-                                const accessToken = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-                                const refreshToken = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "30d" });
-                                const userObj = user.toJSON()
-                                userObj['accessToken'] = accessToken
-                                userObj['refreshToken'] = refreshToken
-                                res.status(200).json(userObj)
-                            }
-                        }
-                    })
-                }
+                refreshTokentoLogin(refreshToken, res);
             }
         } catch { res.status(500).json({ message: "Something went wrong." }) }
-
     })
     //get profile
 router.get('/profile', authenticateToken, async(req, res) => {
@@ -89,3 +46,51 @@ router.get('/profile', authenticateToken, async(req, res) => {
 
 
 module.exports = router
+
+function refreshTokentoLogin(refreshToken, res) {
+    if (!refreshToken) {
+        res.status(401).json({
+            message: "User not found "
+        })
+    } else {
+        jwt.verify(refreshToken, process.env.JWT_SECRET, async(err, payload) => {
+            if (err) {
+                res.status(401).json({ message: "could not find the refresh token" })
+                return
+            } else {
+                const id = payload.id
+                const user = await User.findById(id)
+                if (!user) {
+                    res.status(401).json({ message: "Unauthorized" })
+                } else {
+                    getTokenUser(user, res)
+                }
+            }
+        })
+    }
+}
+
+async function emailValidationtoLogin(email, res, password) {
+    const user = await User.findOne({ email: email })
+    if (!user) {
+        res.status(401).json({
+            message: "User not found "
+        })
+    } else {
+        const isValidPassword = await bcrypt.compare(password, user.password)
+        if (!isValidPassword) {
+            res.status(401).json({ message: "Password is incorrect" })
+        } else {
+            getTokenUser(user, res)
+        }
+    }
+}
+
+function getTokenUser(user, res) {
+    const accessToken = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" })
+    const refreshToken = jwt.sign({ email: user.email, id: user._id }, process.env.JWT_SECRET, { expiresIn: "30d" })
+    const userObj = user.toJSON()
+    userObj['accessToken'] = accessToken
+    userObj['refreshToken'] = refreshToken
+    res.status(200).json(userObj)
+}
